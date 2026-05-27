@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+cryptography
+rich
+python-jose
+bcrypt
+paramiko
+pydantic
+python-multipart
+openai
+python-dotenv

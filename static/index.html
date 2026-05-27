@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infra Agent Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css?v=2">
+</head>
+<body>
+    <div id="app">
+        <!-- Login View -->
+        <div id="login-view" class="view active">
+            <div class="glass-card login-card">
+                <div class="logo">
+                    <span class="logo-icon">🚀</span>
+                    <h1>InfraAgent</h1>
+                </div>
+                <form id="login-form">
+                    <div class="input-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="server_ip">Server Public IP</label>
+                        <input type="text" id="server_ip" name="server_ip" placeholder="e.g. 108.131.105.242" required>
+                    </div>
+                    <button type="submit" class="btn primary">Authenticate</button>
+                    <p id="login-error" class="error-text hidden"></p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dashboard View -->
+        <div id="dashboard-view" class="view hidden">
+            <nav class="navbar">
+                <div class="logo">
+                    <span class="logo-icon">🚀</span>
+                    <h2>InfraAgent</h2>
+                </div>
+                <div class="user-controls">
+                    <span id="user-badge" class="badge"></span>
+                    <button id="logout-btn" class="btn text-btn">Logout</button>
+                </div>
+            </nav>
+
+            <main class="dashboard-content">
+                <div class="grid">
+                    <!-- Agent Execution Panel -->
+                    <div class="glass-card panel">
+                        <h3>Execute Infrastructure Task</h3>
+                        <p class="subtitle">Describe what you want to provision or configure.</p>
+                        <form id="execute-form">
+                            <textarea id="task-input" rows="8" placeholder="e.g. Install nginx and start the service..." required></textarea>
+                            <button type="submit" class="btn primary w-full">Generate Commands</button>
+                        </form>
+                        <div id="execution-loader" class="loader hidden"></div>
+
+                        <!-- Confirmation Section -->
+                        <div id="confirmation-section" class="hidden" style="margin-top: 1.5rem;">
+                            <h4 style="color: #60a5fa; margin-bottom: 0.5rem;">Commands Generated (Pending Approval):</h4>
+                            <div id="pending-commands" class="results-container" style="min-height: auto; max-height: 200px;"></div>
+                            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                                <button id="confirm-execute-btn" class="btn secondary w-full">Yes, Execute Commands</button>
+                                <button id="cancel-execute-btn" class="btn text-btn w-full" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; font-weight: bold;">Cancel</button>
+                            </div>
+                        </div>
+
+                        <div id="execution-results" class="results-container hidden"></div>
+                    </div>
+
+
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="/static/app.js?v=4"></script>
+</body>
+</html>
