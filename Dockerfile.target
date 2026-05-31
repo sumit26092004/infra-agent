@@ -1,0 +1,22 @@
+FROM ubuntu:22.04
+
+# Install OpenSSH server and sudo
+RUN apt-get update && apt-get install -y openssh-server sudo && rm -rf /var/lib/apt/lists/*
+
+# Setup SSH directory
+RUN mkdir /var/run/sshd
+
+# Create a test user for the agent to connect to
+RUN useradd -rm -d /home/testuser -s /bin/bash -g root -G sudo -u 1000 testuser
+
+# Set the password for testuser to 'testpassword'
+RUN echo 'testuser:testpassword' | chpasswd
+
+# Allow password authentication and configure SSH
+RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config
+
+EXPOSE 22
+
+# Run SSH daemon in the foreground
+CMD ["/usr/sbin/sshd", "-D"]

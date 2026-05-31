@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - target-server
+
+  target-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.target
+    ports:
+      - "2222:22"

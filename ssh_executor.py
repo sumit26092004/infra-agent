@@ -23,7 +23,9 @@ class SSHExecutor:
                     hostname=self.host,
                     username=self.username,
                     password=self.password,
-                    timeout=10
+                    timeout=30,
+                    look_for_keys=True,
+                    allow_agent=True
                 )
             except paramiko.ssh_exception.AuthenticationException:
                 if self.key_filename and self.backup_username:
