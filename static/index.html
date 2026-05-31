@@ -55,7 +55,7 @@
                         <h3>Execute Infrastructure Task</h3>
                         <p class="subtitle">Describe what you want to provision or configure.</p>
                         <form id="execute-form">
-                            <textarea id="task-input" rows="8" placeholder="e.g. Install nginx and start the service..." required></textarea>
+                            <textarea id="task-input" class="w-full" rows="8" placeholder="e.g. Install nginx and start the service..." required></textarea>
                             <button type="submit" class="btn primary w-full">Generate Commands</button>
                         </form>
                         <div id="execution-loader" class="loader hidden"></div>
@@ -73,11 +73,20 @@
                         <div id="execution-results" class="results-container hidden"></div>
                     </div>
 
-
+                    <!-- Log Analysis Panel -->
+                    <div class="glass-card panel">
+                        <h3>Analyze Infrastructure Logs</h3>
+                    <p class="subtitle">Paste system errors or logs to get an AI diagnosis and a one-click fix.</p>
+                    <form id="analyze-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <textarea id="logs-input" class="w-full" rows="6" placeholder="Paste your error logs here (e.g. nginx or docker errors)..." required></textarea>
+                        <button type="submit" class="btn primary w-full">Analyze Logs</button>
+                    </form>
+                    <div id="analyze-loader" class="loader hidden"></div>
+                    <div id="analyze-results" class="results-container hidden"></div>
                 </div>
             </main>
         </div>
     </div>
-    <script src="/static/app.js?v=4"></script>
+    <script src="/static/app.js?v=6"></script>
 </body>
 </html>

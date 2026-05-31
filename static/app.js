@@ -16,7 +16,10 @@ const taskInput = document.getElementById("task-input");
 const executionLoader = document.getElementById("execution-loader");
 const executionResults = document.getElementById("execution-results");
 
-
+const analyzeForm = document.getElementById("analyze-form");
+const logsInput = document.getElementById("logs-input");
+const analyzeLoader = document.getElementById("analyze-loader");
+const analyzeResults = document.getElementById("analyze-results");
 
 // Init
 async function init() {
@@ -216,7 +219,116 @@ cancelBtn.addEventListener("click", () => {
     pendingPlan = [];
 });
 
+// Analyze Logs
+analyzeForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    analyzeLoader.classList.remove("hidden");
+    analyzeResults.classList.add("hidden");
+    analyzeResults.innerHTML = "";
 
+    try {
+        const res = await fetch(`${API_BASE}/analyze-logs`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ logs: logsInput.value })
+        });
+        const data = await res.json();
+        
+        if (!res.ok) {
+            let errorText = typeof data.detail === 'object' ? JSON.stringify(data.detail) : data.detail;
+            analyzeResults.innerHTML = `<div class="cmd-error">Error: ${errorText}</div>`;
+        } else {
+            const diag = data.diagnosis;
+            if (diag.error) {
+                analyzeResults.innerHTML = `<div class="cmd-error">Agent Error: ${diag.error}</div>`;
+            } else {
+                let riskColor = "var(--text-color)";
+                if (diag.severity === "CRITICAL") riskColor = "#ef4444";
+                else if (diag.severity === "HIGH") riskColor = "#f97316";
+                else if (diag.severity === "MEDIUM") riskColor = "#eab308";
+                else if (diag.severity === "LOW") riskColor = "#22c55e";
+
+                let html = `
+                    <div style="margin-bottom: 1rem;">
+                        <span style="font-size:0.75rem; padding: 0.2rem 0.5rem; background: rgba(255,255,255,0.1); border-radius: 4px; border-left: 3px solid ${riskColor}; color:${riskColor}; font-weight:bold;">${diag.severity}</span>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <strong>Root Cause:</strong>
+                        <div style="color: #9ca3af; margin-top: 0.2rem;">${diag.root_cause}</div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <strong>Recommended Fix:</strong>
+                        <div style="color: #9ca3af; margin-top: 0.2rem;">${diag.recommended_fix}</div>
+                    </div>
+                `;
+
+                if (diag.commands && diag.commands.length > 0) {
+                    html += `<div style="margin-bottom: 1rem;"><strong>Commands to Run:</strong><div class="cmd-output" style="margin-top: 0.5rem;">`;
+                    diag.commands.forEach(cmd => {
+                        html += `<div>$ ${cmd}</div>`;
+                    });
+                    html += `</div></div>`;
+                    
+                    html += `<button id="execute-fix-btn" class="btn secondary w-full">Apply Recommended Fix</button>`;
+                }
+                
+                analyzeResults.innerHTML = html;
+
+                const execFixBtn = document.getElementById("execute-fix-btn");
+                if (execFixBtn) {
+                    execFixBtn.addEventListener("click", async () => {
+                        execFixBtn.disabled = true;
+                        execFixBtn.textContent = "Executing...";
+                        
+                        const plan = diag.commands.map((cmd, i) => ({
+                            step: i + 1,
+                            command: cmd,
+                            purpose: "Apply AI recommended fix",
+                            risk_level: diag.severity,
+                            safety_reason: "AI generated fix"
+                        }));
+
+                        try {
+                            const execRes = await fetch(`${API_BASE}/execute`, {
+                                method: "POST",
+                                headers: {
+                                    "Authorization": `Bearer ${token}`,
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({ plan: plan })
+                            });
+                            const execData = await execRes.json();
+                            
+                            if (!execRes.ok) {
+                                analyzeResults.innerHTML += `<div class="cmd-error" style="margin-top:1rem;">Execution Error: ${execData.detail}</div>`;
+                            } else {
+                                let resultsHtml = `<div style="margin-top:1rem;"><strong>Execution Results:</strong></div>`;
+                                execData.results.forEach(r => {
+                                    resultsHtml += `
+                                        <div class="cmd-title" style="margin-top:0.5rem;">$ ${r.command}</div>
+                                        <div class="cmd-output">${r.result.output || ''}</div>
+                                        ${r.result.error ? `<div class="cmd-error">${r.result.error}</div>` : ''}
+                                    `;
+                                });
+                                analyzeResults.innerHTML += resultsHtml;
+                            }
+                        } catch(err) {
+                            analyzeResults.innerHTML += `<div class="cmd-error" style="margin-top:1rem;">Network Error during execution.</div>`;
+                        }
+                    });
+                }
+            }
+        }
+    } catch (err) {
+        analyzeResults.innerHTML = `<div class="cmd-error">Network error</div>`;
+    } finally {
+        analyzeLoader.classList.add("hidden");
+        analyzeResults.classList.remove("hidden");
+    }
+});
 
 // Boot
 init();

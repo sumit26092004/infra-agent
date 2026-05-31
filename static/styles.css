@@ -193,7 +193,7 @@ textarea {
     gap: 2rem;
 }
 @media(min-width: 768px) {
-    .grid { grid-template-columns: 2fr 1fr; }
+    .grid { grid-template-columns: 1fr; }
 }
 
 .users-list { margin-top: 2rem; }

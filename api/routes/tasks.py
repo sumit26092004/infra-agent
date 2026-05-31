@@ -18,6 +18,9 @@ class PlanRequest(BaseModel):
 class ExecuteConfirmedRequest(BaseModel):
     plan: List[Dict[str, Any]]
 
+class AnalyzeLogsRequest(BaseModel):
+    logs: str
+
 def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=401,
@@ -153,3 +156,13 @@ def execute_task(req: ExecuteConfirmedRequest, current_user: dict = Depends(get_
         if ssh.client:
             ssh.close()
         return {"error": str(e), "results": []}
+
+from llm_service import llm_service
+
+@router.post("/analyze-logs")
+def analyze_logs_endpoint(req: AnalyzeLogsRequest, current_user: dict = Depends(get_current_user)):
+    try:
+        diagnosis = llm_service.analyze_logs(req.logs)
+        return {"diagnosis": diagnosis}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
