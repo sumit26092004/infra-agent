@@ -15,6 +15,7 @@ const chartMaxDataPoints = 20;
 // Terminal globals
 let terminal = null;
 let termWs = null;
+let fitAddon = null;
 
 // DOM Elements
 const loginView = document.getElementById("login-view");
@@ -240,7 +241,20 @@ function initTerminal() {
         fontFamily: 'monospace'
     });
     
+    // Add fit addon
+    if (window.FitAddon) {
+        fitAddon = new window.FitAddon.FitAddon();
+        terminal.loadAddon(fitAddon);
+    }
+    
     terminal.open(container);
+    if (fitAddon) {
+        fitAddon.fit();
+        window.addEventListener('resize', () => {
+            if (fitAddon) fitAddon.fit();
+        });
+    }
+    
     terminal.writeln('Initializing SSH WebSocket Connection...\r\n');
     
     const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -280,6 +294,18 @@ function initTerminal() {
             termWs.send(data);
         }
     });
+}
+
+function toggleFullscreenTerminal() {
+    const panel = document.getElementById('terminal-panel');
+    if (!panel) return;
+    
+    panel.classList.toggle('fullscreen-terminal');
+    
+    // Slight delay to allow CSS transitions to apply
+    setTimeout(() => {
+        if (fitAddon) fitAddon.fit();
+    }, 100);
 }
 
 function initChart() {

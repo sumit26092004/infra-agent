@@ -260,6 +260,24 @@ textarea {
     to { opacity: 1; transform: translateY(0); }
 }
 
+.fullscreen-terminal {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    background: #030712 !important;
+    padding: 1rem !important;
+    display: flex;
+    flex-direction: column;
+}
+.fullscreen-terminal #terminal-container {
+    height: 100% !important;
+}
+
 /* Health Dashboard */
 .health-grid {
     display: grid;
