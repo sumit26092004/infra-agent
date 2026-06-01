@@ -1,9 +1,11 @@
 import os
 import json
+import hashlib
 from typing import List, Dict, Any, Tuple
 from openai import OpenAI
 from validators.safety import SafetyValidator
 from core.config import config
+from database import get_db
 
 class ExecutionPlanner:
     def __init__(self):
@@ -48,18 +50,37 @@ Task:
 {task}
 """
 
-        response = self.client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0,
-        )
-
-        output = response.choices[0].message.content.strip()
+        # Check cache (case-insensitive task caching)
+        prompt_hash = hashlib.sha256(task.strip().lower().encode()).hexdigest()
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT response FROM llm_cache WHERE prompt_hash=?", (prompt_hash,))
+        row = cursor.fetchone()
+        
+        if row:
+            output = row[0]
+            conn.close()
+            print(f"Cache hit for task: {task}")
+        else:
+            response = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0,
+            )
+            output = response.choices[0].message.content.strip()
+            
+            try:
+                cursor.execute("INSERT INTO llm_cache (prompt_hash, response) VALUES (?, ?)", (prompt_hash, output))
+                conn.commit()
+            except Exception as e:
+                print(f"Failed to cache LLM response: {e}")
+            finally:
+                conn.close()
 
         # Strip markdown fences if present
         if "```" in output:

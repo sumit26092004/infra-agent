@@ -19,6 +19,14 @@ def init_db():
             role TEXT NOT NULL DEFAULT 'user'
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS llm_cache (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            prompt_hash TEXT UNIQUE NOT NULL,
+            response TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     conn.commit()
 
     # Seed admin user if none exists

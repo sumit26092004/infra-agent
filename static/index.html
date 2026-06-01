@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Infra Agent Console</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <title>Infra Agent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css?v=2">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
 </head>
 <body>
     <div id="app">
@@ -32,6 +35,13 @@
                     <button type="submit" class="btn primary">Authenticate</button>
                     <p id="login-error" class="error-text hidden"></p>
                 </form>
+                
+                <!-- Saved Sessions -->
+                <div id="saved-sessions-container" style="margin-top: 2rem; display: none;">
+                    <h4 style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; margin-bottom: 1rem; text-align: center; letter-spacing: 0.1em;">Recent Servers</h4>
+                    <div id="saved-sessions-grid" style="display: grid; gap: 0.75rem;">
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -49,6 +59,86 @@
             </nav>
 
             <main class="dashboard-content">
+                <!-- Live Health Dashboard -->
+                <div class="glass-card panel" id="health-dashboard" style="margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3>Live Server Health</h3>
+                        <div class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; display: flex; align-items: center; gap: 0.4rem;">
+                            <span class="live-indicator"></span> Live
+                        </div>
+                    </div>
+                    <div class="health-grid">
+                        <div class="health-card">
+                            <div class="health-title">CPU Usage</div>
+                            <div class="health-value" id="health-cpu">0%</div>
+                            <div class="health-subtitle" style="margin-bottom: 0.75rem;">Load: <span id="health-cpu-load">N/A</span></div>
+                            <div class="progress-bar"><div class="progress-fill" id="cpu-bar" style="width: 0%; background: var(--primary);"></div></div>
+                        </div>
+                        <div class="health-card">
+                            <div class="health-title">RAM Usage</div>
+                            <div class="health-value" id="health-ram">0%</div>
+                            <div class="health-subtitle" style="margin-bottom: 0.75rem;"><span id="health-ram-free">0.0</span> GB free of <span id="health-ram-total">0.0</span> GB</div>
+                            <div class="progress-bar"><div class="progress-fill" id="ram-bar" style="width: 0%; background: var(--secondary);"></div></div>
+                        </div>
+                        <div class="health-card">
+                            <div class="health-title">Disk Usage</div>
+                            <div class="health-value" id="health-disk">0%</div>
+                            <div class="health-subtitle" style="margin-bottom: 0.75rem;"><span id="health-disk-avail">0G</span> available</div>
+                            <div style="position: relative; height: 100px; width: 100%;">
+                                <canvas id="disk-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="health-card">
+                            <div class="health-title">Live Bandwidth</div>
+                            <div class="health-value" id="health-net">0 KB/s</div>
+                            <div class="health-subtitle" style="margin-bottom: 0.75rem;"><span id="net-rx">↓ 0 KB/s</span> | <span id="net-tx">↑ 0 KB/s</span></div>
+                            <div class="progress-bar"><div class="progress-fill" style="width: 100%; background: #06b6d4;"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Services Panel -->
+                <div class="glass-card panel" id="services-dashboard" style="margin-bottom: 2rem; animation: slideIn 0.5s ease forwards; opacity: 0; transform: translateY(20px);">
+                    <h3>System Services</h3>
+                    <div style="display: flex; gap: 2rem; margin-top: 1rem;">
+                        <div>
+                            <span style="font-size: 2rem; font-weight: bold; color: var(--primary);" id="svc-running">0</span>
+                            <span class="health-subtitle">Running</span>
+                        </div>
+                        <div>
+                            <span style="font-size: 2rem; font-weight: bold; color: #a855f7;" id="svc-inactive">0</span>
+                            <span class="health-subtitle">Stopped</span>
+                        </div>
+                        <div>
+                            <span style="font-size: 2rem; font-weight: bold; color: var(--danger);" id="svc-failed">0</span>
+                            <span class="health-subtitle">Failed</span>
+                        </div>
+                    </div>
+                    <div id="failed-services-list" style="margin-top: 1rem; color: var(--danger); font-family: monospace; font-size: 0.85rem;"></div>
+                    <div id="running-services-list" style="margin-top: 1rem; color: var(--primary); font-family: monospace; font-size: 0.85rem; max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; display: none;"></div>
+                    <div id="inactive-services-list" style="margin-top: 1rem; color: #a855f7; font-family: monospace; font-size: 0.85rem; max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; display: none;"></div>
+                </div>
+
+                <!-- Live Graph Panel -->
+                <div class="glass-card panel" style="margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3>Real-time Telemetry</h3>
+                        <div class="health-subtitle">Last 100 seconds</div>
+                    </div>
+                    <div style="position: relative; height: 250px; width: 100%;">
+                        <canvas id="health-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Live Terminal Panel -->
+                <div class="glass-card panel" style="margin-bottom: 2rem; padding: 1rem; animation: slideIn 0.6s ease forwards; opacity: 0; transform: translateY(20px);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0 1rem;">
+                        <h3 style="margin: 0;">Live SSH Terminal</h3>
+                        <div class="badge" id="terminal-status" style="background: rgba(14, 165, 233, 0.2); color: var(--primary);">Connecting...</div>
+                    </div>
+                    <div id="terminal-container" style="width: 100%; height: 400px; background: #000; border-radius: 8px; padding: 0.5rem; overflow: hidden; border: 1px solid var(--glass-border);"></div>
+                </div>
+
                 <div class="grid">
                     <!-- Agent Execution Panel -->
                     <div class="glass-card panel">
