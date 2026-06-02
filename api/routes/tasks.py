@@ -126,7 +126,7 @@ def get_server_health(current_user: dict = Depends(get_current_user)):
     os_info=$(cat /etc/os-release 2>/dev/null | grep '^PRETTY_NAME=' | cut -d '"' -f 2)
     if [ -z "$os_info" ]; then os_info="Unknown OS"; fi
     
-    serial=$(cat /sys/class/dmi/id/product_serial 2>/dev/null)
+    serial=$(sudo -S cat /sys/class/dmi/id/product_serial 2>/dev/null)
     if [ -z "$serial" ]; then serial="Unknown Serial"; fi
     
     echo "$cpu_usage|$ram_percent|$disk_percent|$net|$load_avg|$ram_total|$ram_free|$disk_avail|$services_running|$num_failed|$failed_names|$running_names|$services_inactive|$inactive_names|$os_info|$serial"
