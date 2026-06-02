@@ -27,6 +27,17 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS otps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            host TEXT NOT NULL,
+            email TEXT NOT NULL,
+            otp TEXT NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            used BOOLEAN NOT NULL DEFAULT 0
+        )
+    ''')
     conn.commit()
 
     # Seed admin user if none exists

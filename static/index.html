@@ -33,6 +33,9 @@
                         <label for="server_ip">Server Public IP</label>
                         <input type="text" id="server_ip" name="server_ip" placeholder="e.g. 108.131.105.242" required>
                     </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <button type="button" class="text-btn" id="forgot-password-btn" style="font-size: 0.85rem; padding: 0;">Forgot Password?</button>
+                    </div>
                     <button type="submit" class="btn primary">Authenticate</button>
                     <p id="login-error" class="error-text hidden"></p>
                 </form>
@@ -63,7 +66,11 @@
                 <!-- Live Health Dashboard -->
                 <div class="glass-card panel" id="health-dashboard" style="margin-bottom: 2rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h3>Live Server Health</h3>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <h3>Live Server Health</h3>
+                            <span id="sys-os" style="font-size: 0.85rem; color: #94a3b8; font-weight: 500;"></span>
+                            <span id="sys-serial" style="font-size: 0.85rem; color: #94a3b8; font-weight: 500;"></span>
+                        </div>
                         <div class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; display: flex; align-items: center; gap: 0.4rem;">
                             <span class="live-indicator"></span> Live
                         </div>
@@ -180,7 +187,54 @@
                 </div>
             </main>
         </div>
+        <div id="recovery-modal" class="modal hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+            <div class="glass-card" style="width: 100%; max-width: 400px; padding: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3>Reset SSH Password</h3>
+                    <button id="close-recovery-modal" class="text-btn" style="font-size: 1.5rem; line-height: 1;">&times;</button>
+                </div>
+                
+                <!-- Step 1: Request OTP -->
+                <form id="recovery-request-form">
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">Enter your details to receive an OTP.</p>
+                    <div class="input-group">
+                        <label>Username</label>
+                        <input type="text" id="rec-username" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Server IP</label>
+                        <input type="text" id="rec-host" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Email Address</label>
+                        <input type="email" id="rec-email" required>
+                    </div>
+                    <button type="submit" class="btn primary" style="width: 100%">Send OTP</button>
+                    <p id="rec-request-error" class="error-text hidden"></p>
+                </form>
+
+                <!-- Step 2: Verify OTP -->
+                <form id="recovery-verify-form" class="hidden">
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">An OTP was sent to your email. (Check the backend terminal console for this mock OTP).</p>
+                    <div class="input-group">
+                        <label>6-Digit OTP</label>
+                        <input type="text" id="rec-otp" required maxlength="6">
+                    </div>
+                    <button type="submit" class="btn primary" style="width: 100%">Verify & Reset Password</button>
+                    <p id="rec-verify-error" class="error-text hidden"></p>
+                </form>
+                
+                <!-- Step 3: Success -->
+                <div id="recovery-success" class="hidden" style="text-align: center;">
+                    <h3 style="color: #10b981; margin-bottom: 1rem;">Password Reset Successful!</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Your new SSH password is:</p>
+                    <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 1.25rem; letter-spacing: 2px; color: var(--primary); margin-bottom: 1.5rem;" id="rec-new-password"></div>
+                    <button id="rec-done-btn" class="btn primary" style="width: 100%">Back to Login</button>
+                </div>
+            </div>
+        </div>
+
     </div>
-    <script src="/static/app.js?v=6"></script>
+    <script src="/static/app.js?v=7"></script>
 </body>
 </html>

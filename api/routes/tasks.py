@@ -84,8 +84,8 @@ def get_server_health(current_user: dict = Depends(get_current_user)):
     if not ssh or not ssh.client:
         raise HTTPException(status_code=500, detail="Failed to connect to server for health metrics")
         
-    cmd = """
-    cpu_usage=$(top -bn1 | awk '/Cpu\\(s\\)/ {for(i=1;i<=NF;i++) if($i=="id" || $i=="id,") print $(i-1)}' | awk '{print 100 - $1}')
+    cmd = r"""
+    cpu_usage=$(top -bn1 | awk '/Cpu\(s\)/ {for(i=1;i<=NF;i++) if($i=="id" || $i=="id,") print $(i-1)}' | awk '{print 100 - $1}')
     if [ -z "$cpu_usage" ]; then cpu_usage="0"; fi
     
     load_avg=$(uptime | awk -F'load average:' '{print $2}' | sed 's/^ *//')
@@ -99,39 +99,51 @@ def get_server_health(current_user: dict = Depends(get_current_user)):
     
     net=$(cat /proc/net/dev | grep -v 'lo:' | awk 'NR>2{rx+=$2; tx+=$10} END{print rx, tx}')
     
-    services_running_out=$(systemctl list-units --type=service --state=running --no-pager --no-legend)
+    services_running_out=$(systemctl list-units --all --type=service --state=running --no-pager --no-legend 2>/dev/null)
     if [ -z "$services_running_out" ]; then
         services_running=0; running_names="";
     else
         services_running=$(echo "$services_running_out" | wc -l);
-        running_names=$(echo "$services_running_out" | awk '{print $1}' | tr '\n' ',' | sed 's/,$//');
+        running_names=$(echo "$services_running_out" | grep -o '[^ ]*\.service' | tr '\n' ',' | sed 's/,$//');
     fi
     
-    services_failed_out=$(systemctl list-units --type=service --state=failed --no-pager --no-legend)
+    services_failed_out=$(systemctl list-units --all --type=service --state=failed --no-pager --no-legend 2>/dev/null)
     if [ -z "$services_failed_out" ]; then 
         num_failed=0; failed_names=""; 
     else 
         num_failed=$(echo "$services_failed_out" | wc -l); 
-        failed_names=$(echo "$services_failed_out" | awk '{print $1}' | tr '\n' ',' | sed 's/,$//'); 
+        failed_names=$(echo "$services_failed_out" | grep -o '[^ ]*\.service' | tr '\n' ',' | sed 's/,$//'); 
     fi
     
-    services_inactive_out=$(systemctl list-units --all --type=service --state=inactive --no-pager --no-legend)
+    services_inactive_out=$(systemctl list-units --all --type=service --state=inactive --no-pager --no-legend 2>/dev/null)
     if [ -z "$services_inactive_out" ]; then
         services_inactive=0; inactive_names="";
     else
         services_inactive=$(echo "$services_inactive_out" | wc -l);
-        inactive_names=$(echo "$services_inactive_out" | awk '{print $1}' | tr '\n' ',' | sed 's/,$//');
+        inactive_names=$(echo "$services_inactive_out" | grep -o '[^ ]*\.service' | tr '\n' ',' | sed 's/,$//');
     fi
     
-    echo "$cpu_usage|$ram_percent|$disk_percent|$net|$load_avg|$ram_total|$ram_free|$disk_avail|$services_running|$num_failed|$failed_names|$running_names|$services_inactive|$inactive_names"
+    os_info=$(cat /etc/os-release 2>/dev/null | grep '^PRETTY_NAME=' | cut -d '"' -f 2)
+    if [ -z "$os_info" ]; then os_info="Unknown OS"; fi
+    
+    serial=$(cat /sys/class/dmi/id/product_serial 2>/dev/null)
+    if [ -z "$serial" ]; then serial="Unknown Serial"; fi
+    
+    echo "$cpu_usage|$ram_percent|$disk_percent|$net|$load_avg|$ram_total|$ram_free|$disk_avail|$services_running|$num_failed|$failed_names|$running_names|$services_inactive|$inactive_names|$os_info|$serial"
     """
     
-    res = ssh.run_command(cmd)
+    res = ssh.run_command(cmd, get_pty=False)
     if res["exit_code"] != 0:
         return {"cpu": 0, "ram": 0, "disk": 0, "rx": 0, "tx": 0, "load_avg": "N/A", "ram_total": 0, "ram_free": 0, "disk_avail": "N/A"}
         
     try:
-        parts = res["output"].split("|")
+        # Without a PTY, the output will not be wrapped or echoed.
+        # It should just be the single pipe-delimited string.
+        output_lines = [line.strip() for line in res["output"].split('\n') if '|' in line and len(line.split('|')) >= 10]
+        if not output_lines:
+            raise ValueError(f"No valid metrics found. Raw output: {res['output']}")
+            
+        parts = output_lines[-1].split("|")
         cpu = round(float(parts[0]), 1)
         ram = round(float(parts[1]), 1)
         disk = int(parts[2])
@@ -150,6 +162,8 @@ def get_server_health(current_user: dict = Depends(get_current_user)):
         running_names = parts[11] if len(parts) > 11 else ""
         services_inactive = int(parts[12]) if len(parts) > 12 else 0
         inactive_names = parts[13] if len(parts) > 13 else ""
+        os_info = parts[14] if len(parts) > 14 else ""
+        serial = parts[15] if len(parts) > 15 else ""
         
         return {
             "cpu": cpu,
@@ -166,7 +180,9 @@ def get_server_health(current_user: dict = Depends(get_current_user)):
             "failed_names": failed_names,
             "running_names": running_names,
             "services_inactive": services_inactive,
-            "inactive_names": inactive_names
+            "inactive_names": inactive_names,
+            "os_info": os_info,
+            "serial": serial
         }
     except Exception as e:
         print(f"Error parsing health metrics: {e}")

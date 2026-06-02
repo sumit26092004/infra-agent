@@ -17,6 +17,13 @@ let terminal = null;
 let termWs = null;
 let fitAddon = null;
 
+// Recovery Globals
+let recoveryState = {
+    username: "",
+    host: "",
+    email: ""
+};
+
 // DOM Elements
 const loginView = document.getElementById("login-view");
 const dashboardView = document.getElementById("dashboard-view");
@@ -63,48 +70,50 @@ function addSavedSession(host, username, token) {
     localStorage.setItem('savedSessions', JSON.stringify(sessions));
 }
 
-function renderSavedSessions() {
-    const sessions = getSavedSessions();
+async function renderSavedSessions() {
     const container = document.getElementById("saved-sessions-container");
     const grid = document.getElementById("saved-sessions-grid");
     
     if (!container || !grid) return;
     
-    if (sessions.length === 0) {
-        container.style.display = "none";
-        return;
-    }
-    
-    container.style.display = "block";
-    grid.innerHTML = "";
-    
-    sessions.forEach(s => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "btn secondary w-full";
-        btn.style.textAlign = "left";
-        btn.style.display = "flex";
-        btn.style.justifyContent = "space-between";
-        btn.style.alignItems = "center";
-        btn.style.padding = "1rem";
-        btn.innerHTML = `
-            <span><strong style="color:var(--primary)">${s.username}</strong>@${s.host}</span>
-            <span style="font-size:1.2rem; color:var(--text-muted);">&rarr;</span>
-        `;
-        btn.onclick = async () => {
-            token = s.token;
-            localStorage.setItem("token", token);
-            await fetchUser();
-            if (!currentUser) { 
-                loginError.textContent = "Session expired. Please enter password.";
-                loginError.classList.remove("hidden");
+    try {
+        const res = await fetch("/saved-logins");
+        const sessions = await res.json();
+        
+        if (!sessions || sessions.length === 0) {
+            container.style.display = "none";
+            return;
+        }
+        
+        container.style.display = "block";
+        grid.innerHTML = "";
+        
+        sessions.forEach(s => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "btn secondary w-full";
+            btn.style.textAlign = "left";
+            btn.style.display = "flex";
+            btn.style.justifyContent = "space-between";
+            btn.style.alignItems = "center";
+            btn.style.padding = "1rem";
+            btn.innerHTML = `
+                <span><strong style="color:var(--primary)">${s.username}</strong>@${s.host}</span>
+                <span style="font-size:1.2rem; color:var(--text-muted);">&rarr;</span>
+            `;
+            btn.onclick = () => {
                 document.getElementById("server_ip").value = s.host;
                 document.getElementById("username").value = s.username;
-                document.getElementById("password").focus();
-            }
-        };
-        grid.appendChild(btn);
-    });
+                document.getElementById("password").value = s.password;
+                
+                // Trigger form submission
+                loginForm.dispatchEvent(new Event("submit"));
+            };
+            grid.appendChild(btn);
+        });
+    } catch (e) {
+        console.error("Failed to load saved logins:", e);
+    }
 }
 
 function showDashboard() {
@@ -122,6 +131,92 @@ function showDashboard() {
     if (healthInterval) clearInterval(healthInterval);
     healthInterval = setInterval(fetchHealth, 5000);
 }
+
+    // Recovery Modal Logic
+    document.getElementById('forgot-password-btn')?.addEventListener('click', () => {
+        const user = document.getElementById('username').value;
+        const ip = document.getElementById('server_ip').value;
+        if (user) document.getElementById('rec-username').value = user;
+        if (ip) document.getElementById('rec-host').value = ip;
+        
+        document.getElementById('recovery-modal').classList.remove('hidden');
+        document.getElementById('recovery-request-form').classList.remove('hidden');
+        document.getElementById('recovery-verify-form').classList.add('hidden');
+        document.getElementById('recovery-success').classList.add('hidden');
+        document.getElementById('rec-request-error').classList.add('hidden');
+    });
+
+    document.getElementById('close-recovery-modal')?.addEventListener('click', () => {
+        document.getElementById('recovery-modal').classList.add('hidden');
+    });
+
+    document.getElementById('recovery-request-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('rec-username').value;
+        const host = document.getElementById('rec-host').value;
+        const email = document.getElementById('rec-email').value;
+        const errorEl = document.getElementById('rec-request-error');
+        
+        errorEl.classList.add('hidden');
+        
+        try {
+            const res = await fetch('/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, host, email })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                recoveryState = { username, host, email };
+                document.getElementById('recovery-request-form').classList.add('hidden');
+                document.getElementById('recovery-verify-form').classList.remove('hidden');
+            } else {
+                errorEl.textContent = data.detail || 'Error requesting OTP';
+                errorEl.classList.remove('hidden');
+            }
+        } catch (err) {
+            errorEl.textContent = 'Network error connecting to server.';
+            errorEl.classList.remove('hidden');
+        }
+    });
+
+    document.getElementById('recovery-verify-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const otp = document.getElementById('rec-otp').value;
+        const errorEl = document.getElementById('rec-verify-error');
+        
+        errorEl.classList.add('hidden');
+        
+        try {
+            const res = await fetch('/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...recoveryState, otp })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                document.getElementById('recovery-verify-form').classList.add('hidden');
+                document.getElementById('recovery-success').classList.remove('hidden');
+                document.getElementById('rec-new-password').textContent = data.new_password;
+            } else {
+                errorEl.textContent = data.detail || 'Invalid OTP or Error';
+                errorEl.classList.remove('hidden');
+            }
+        } catch (err) {
+            errorEl.textContent = 'Network error connecting to server.';
+            errorEl.classList.remove('hidden');
+        }
+    });
+
+    document.getElementById('rec-done-btn')?.addEventListener('click', () => {
+        document.getElementById('recovery-modal').classList.add('hidden');
+        // Auto-fill the login form with the new password
+        document.getElementById('username').value = recoveryState.username;
+        document.getElementById('server_ip').value = recoveryState.host;
+        document.getElementById('password').value = document.getElementById('rec-new-password').textContent;
+    });
 
 // Auth
 loginForm.addEventListener("submit", async (e) => {
@@ -399,6 +494,9 @@ async function fetchHealth() {
         });
         if (res.ok) {
             const data = await res.json();
+            
+            if (data.os_info) document.getElementById('sys-os').textContent = data.os_info;
+            if (data.serial) document.getElementById('sys-serial').textContent = `SN: ${data.serial}`;
             
             document.getElementById("health-cpu").textContent = `${data.cpu}%`;
             document.getElementById("cpu-bar").style.width = `${data.cpu}%`;

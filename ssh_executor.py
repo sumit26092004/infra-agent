@@ -46,7 +46,7 @@ class SSHExecutor:
             self.client = None
             raise
 
-    def run_command(self, command):
+    def run_command(self, command, get_pty=True):
         if not self.client:
             raise Exception("SSH not connected")
 
@@ -54,7 +54,7 @@ class SSHExecutor:
 
         # Use get_pty=True so sudo reads from the terminal device (/dev/tty)
         # instead of standard input, preserving pipelines.
-        stdin, stdout, stderr = self.client.exec_command(command, get_pty=True)
+        stdin, stdout, stderr = self.client.exec_command(command, get_pty=get_pty)
         
         if self.password:
             try:
