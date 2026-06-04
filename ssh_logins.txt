@@ -1,14 +1,4 @@
 Host: 52.211.59.29 | User: infra | Pass: Qwertyuiop@197
 Host: 52.211.59.29 | User: sumit | Pass: Qwertyuiop@123
 Host: 52.211.59.29 | User: sumit | Pass: Qwertyuiop@123
-Host: 10.18.0.116 | User: one97 | Pass: Dep@123
-Host: 10.70.37.7 | User: tsumit1.rai | Pass: Qwertyuiop@197
-Host: 10.70.37.7 | User: tsumit1.rai | Pass: Qwertyuiop@197
-Host: 10.18.0.116 | User: one97 | Pass: Dep@123
-Host: 10.18.0.116 | User: one97 | Pass: Dep@123
-Host: 10.18.0.116 | User: one97 | Pass: Dep@123
-Host: 10.0.151.21 | User: one97 | Pass: Dep@123
-Host: 10.70.37.7 | User: tsumit1.rai | Pass: Qwertyuiop@197
-Host: 10.70.37.7 | User: tsumit1.rai | Pass: Qwertyuiop@197
-Host: 10.0.151.21 | User: one97 | Pass: Dep@123
-Host: 10.18.0.116 | User: one97 | Pass: Dep@123
+
